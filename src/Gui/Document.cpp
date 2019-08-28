@@ -894,6 +894,9 @@ void Document::setModified(bool b)
     if(d->_isModified == b)
         return;
     d->_isModified = b;
+
+    if(getDocument())
+        getDocument()->setStatus(App::Document::DocModified,true);
     
     std::list<MDIView*> mdis = getMDIViews();
     for (std::list<MDIView*>::iterator it = mdis.begin(); it != mdis.end(); ++it) {

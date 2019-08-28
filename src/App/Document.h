@@ -73,6 +73,7 @@ public:
         Importing = 6,
         PartialDoc = 7,
         AllowPartialRecompute = 8, // allow recomputing editing object if SkipRecompute is set
+        DocModified = 9, // Mark for any unsaved changes
     };
 
     /** @name Properties */
@@ -86,7 +87,7 @@ public:
     PropertyString CreationDate;
     /// user last modified the document
     PropertyString LastModifiedBy;
-    PropertyString LastModifiedDate;
+    mutable PropertyString LastModifiedDate;
     /// company name UTF8(optional)
     PropertyString Company;
     /// long comment or description (UTF8 with line breaks)
@@ -319,6 +320,8 @@ public:
     void setClosable(bool);
     /// check whether the document can be closed
     bool isClosable() const;
+    /// check if there is any changes in the document that has not been saved
+    bool isModified(void) const;
     /** Recompute touched features and return the number of recalculated features
      *
      * @param objs: specify a sub set of objects to recompute. If empty, then

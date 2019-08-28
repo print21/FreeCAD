@@ -1417,6 +1417,8 @@ void Document::onChanged(const Property* prop)
             this->Uid.setValue(id);
         }
     }
+    if(prop && !prop->testStatus(Property::Output) && !prop->testStatus(Property::PropOutput))
+        setStatus(DocModified,true);
 }
 
 void Document::onBeforeChangeProperty(const TransactionalObject *Who, const Property *What)
@@ -1432,6 +1434,7 @@ void Document::onBeforeChangeProperty(const TransactionalObject *Who, const Prop
 
 void Document::onChangedProperty(const DocumentObject *Who, const Property *What)
 {
+    setStatus(DocModified,true);
     signalChangedObject(*Who, *What);
 }
 
@@ -1464,7 +1467,7 @@ Document::Document(const char *name)
     std::string AuthorComp = App::GetApplication().GetParameterGroupByPath
         ("User parameter:BaseApp/Preferences/Document")->GetASCII("prefCompany","");
     ADD_PROPERTY_TYPE(Label,("Unnamed"),0,Prop_None,"The name of the document");
-    ADD_PROPERTY_TYPE(FileName,(""),0,PropertyType(Prop_Transient|Prop_ReadOnly),"The path to the file where the document is saved to");
+    ADD_PROPERTY_TYPE(FileName,(""),0,PropertyType(Prop_Transient|Prop_ReadOnly|Prop_Output),"The path to the file where the document is saved to");
     ADD_PROPERTY_TYPE(CreatedBy,(Author.c_str()),0,Prop_None,"The creator of the document");
     ADD_PROPERTY_TYPE(CreationDate,(CreationDateString.c_str()),0,Prop_ReadOnly,"Date of creation");
     ADD_PROPERTY_TYPE(LastModifiedBy,(""),0,Prop_None,0);
@@ -1476,7 +1479,7 @@ Document::Document(const char *name)
     // create the uuid for the document
     Base::Uuid id;
     ADD_PROPERTY_TYPE(Id,(""),0,Prop_None,"ID of the document");
-    ADD_PROPERTY_TYPE(Uid,(id),0,Prop_ReadOnly,"UUID of the document");
+    ADD_PROPERTY_TYPE(Uid,(id),0,PropertyType(Prop_ReadOnly|Prop_Output),"UUID of the document");
 
     // license stuff
     ADD_PROPERTY_TYPE(License,("CC-BY 3.0"),0,Prop_None,"License string of the Item");
@@ -1538,9 +1541,9 @@ Document::Document(const char *name)
                         "Whether to show hidden object items in the tree view");
 
     // this creates and sets 'TransientDir' in onChanged()
-    ADD_PROPERTY_TYPE(TransientDir,(""),0,PropertyType(Prop_Transient|Prop_ReadOnly),
+    ADD_PROPERTY_TYPE(TransientDir,(""),0,PropertyType(Prop_Transient|Prop_ReadOnly|Prop_Output),
         "Transient directory, where the files live while the document is open");
-    ADD_PROPERTY_TYPE(Tip,(0),0,PropertyType(Prop_Transient),
+    ADD_PROPERTY_TYPE(Tip,(0),0,PropertyType(Prop_Transient|Prop_Output),
         "Link of the tip object of the document");
     ADD_PROPERTY_TYPE(TipName,(""),0,PropertyType(Prop_Hidden|Prop_ReadOnly),
         "Link of the tip object of the document");
@@ -2187,14 +2190,14 @@ bool Document::save (void)
         return true;
     }
 
+    bool res = false;
+
     if (*(FileName.getValue()) != '\0') {
         // Save the name of the tip object in order to handle in Restore()
         if (Tip.getValue()) {
             TipName.setValue(Tip.getValue()->getNameInDocument());
         }
 
-        std::string LastModifiedDateString = Base::TimeInfo::currentDateTimeString();
-        LastModifiedDate.setValue(LastModifiedDateString.c_str());
         // set author if needed
         bool saveAuthor = App::GetApplication().GetParameterGroupByPath
             ("User parameter:BaseApp/Preferences/Document")->GetBool("prefSetAuthorOnSave",false);
@@ -2204,10 +2207,11 @@ bool Document::save (void)
             LastModifiedBy.setValue(Author.c_str());
         }
 
-        return saveToFile(FileName.getValue());
+        res = saveToFile(FileName.getValue());
+        setStatus(DocModified,false);
     }
 
-    return false;
+    return res;
 }
 
 bool Document::saveToFile(const char* filename) const
@@ -2220,6 +2224,12 @@ bool Document::saveToFile(const char* filename) const
 
     bool policy = App::GetApplication().GetParameterGroupByPath
                 ("User parameter:BaseApp/Preferences/Document")->GetBool("BackupPolicy",true);
+
+    if(testStatus(Document::DocModified)) {
+        // Even if we are saving a copy, we need to update the timestamp here.
+        std::string LastModifiedDateString = Base::TimeInfo::currentDateTimeString();
+        LastModifiedDate.setValue(LastModifiedDateString.c_str());
+    }
 
     // make a tmp. file where to save the project data first and then rename to
     // the actual file name. This may be useful if overwriting an existing file
@@ -2419,7 +2429,8 @@ void Document::afterRestore(bool checkPartial) {
         return;
     }
     GetApplication().signalFinishRestoreDocument(*this);
-    setStatus(Document::Restoring, false);
+    setStatus(Restoring, false);
+    setStatus(DocModified,false);
 }
 
 bool Document::afterRestore(const std::vector<DocumentObject *> &objArray, bool checkPartial) 
@@ -2546,6 +2557,10 @@ const char* Document::getName() const
 
 std::string Document::getFullName() const {
     return myName;
+}
+
+bool Document::isModified() const {
+    return !testStatus(Restoring) && testStatus(DocModified);
 }
 
 /// Remove all modifications. After this call The document becomes valid again.
@@ -3506,6 +3521,8 @@ DocumentObject * Document::addObject(const char* sType, const char* pObjectName,
     if(viewType) 
         pcObject->_pcViewProviderName = viewType;
 
+    setStatus(DocModified,true);
+
     signalNewObject(*pcObject);
 
     // do no transactions if we do a rollback!
@@ -3607,6 +3624,7 @@ std::vector<DocumentObject *> Document::addObjects(const char* sType, const std:
     }
 
     if (!objects.empty()) {
+        setStatus(DocModified,true);
         d->activeObject = objects.back();
         signalActivatedObject(*objects.back());
     }
@@ -3657,6 +3675,8 @@ void Document::addObject(DocumentObject* pcObject, const char* pObjectName)
     const char *viewType = pcObject->getViewProviderNameOverride();
     pcObject->_pcViewProviderName = viewType?viewType:"";
 
+    setStatus(DocModified,true);
+
     signalNewObject(*pcObject);
 
     // do no transactions if we do a rollback!
@@ -3688,6 +3708,8 @@ void Document::_addObject(DocumentObject* pcObject, const char* pObjectName)
 
     const char *viewType = pcObject->getViewProviderNameOverride();
     pcObject->_pcViewProviderName = viewType?viewType:"";
+
+    setStatus(DocModified,true);
 
     // send the signal
     signalNewObject(*pcObject);
@@ -3748,6 +3770,8 @@ void Document::removeObject(const char* sName)
     if (!d->undoing && !d->rollback) {
         pos->second->unsetupObject();
     }
+
+    setStatus(DocModified,true);
 
     signalDeletedObject(*(pos->second));
 
@@ -3845,6 +3869,9 @@ void Document::_removeObject(DocumentObject* pcObject)
     if (!d->undoing && !d->rollback) {
         pcObject->unsetupObject();
     }
+
+    setStatus(DocModified,true);
+
     signalDeletedObject(*pcObject);
     // TODO Check me if it's needed (2015-09-01, Fat-Zer)
 

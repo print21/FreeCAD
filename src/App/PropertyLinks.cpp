@@ -2878,7 +2878,7 @@ void PropertyXLink::restoreLink(App::DocumentObject *lValue) {
         owner->isTouched() && 
         docInfo && 
         docInfo->pcDoc && 
-        stamp==docInfo->pcDoc->LastModifiedDate.getValue())
+        stamp == docInfo->pcDoc->LastModifiedDate.getValue())
     {
         owner->purgeTouched();
     }
@@ -2935,7 +2935,7 @@ void PropertyXLink::_setValue(App::DocumentObject *lValue,
         docInfo = info;
     }
     _pcLink=lValue;
-    if(docInfo && docInfo->pcDoc)
+    if(docInfo && docInfo->pcDoc && !docInfo->pcDoc->isModified())
         stamp=docInfo->pcDoc->LastModifiedDate.getValue();
     objectName = std::move(name);
     _setSubValues(std::move(subs),std::move(shadows));
@@ -2977,7 +2977,7 @@ void PropertyXLink::_setValue(std::string &&filename, std::string &&name,
         unlink();
         docInfo = info;
     }
-    if(docInfo && docInfo->pcDoc)
+    if(docInfo && docInfo->pcDoc && !docInfo->pcDoc->isModified())
         stamp=docInfo->pcDoc->LastModifiedDate.getValue();
     objectName = std::move(name);
     _setSubValues(std::move(subs),std::move(shadows));
