@@ -68,14 +68,6 @@ public:
     bool isPickable();
     void setPickable(bool val);
 
-    /**
-     * Update the visual size to match the given extents
-     * @note should be reimplemented in the offspings
-     * @note use FreeCAD-specific bbox here to simplify the math in derived classes
-     */
-    virtual void setExtents (Base::BoundBox3d /*bbox*/)
-        { }
-
     /// Update the visual sizes. This overloaded version of the previous function to allow pass coin type
     void setExtents (const SbBox3f &bbox);
 
@@ -109,6 +101,14 @@ public:
 protected:
     virtual bool setEdit(int ModNum) override;
     virtual void unsetEdit(int ModNum) override;
+
+    /**
+     * Update the visual size to match the given extents
+     * @note should be reimplemented in the offspings
+     * @note use FreeCAD-specific bbox here to simplify the math in derived classes
+     */
+    virtual void setExtents (Base::BoundBox3d /*bbox*/)
+        { }
 
     /**
      * Guesses the context this datum belongs to and returns appropriate bounding box of all

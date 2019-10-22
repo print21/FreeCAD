@@ -193,7 +193,7 @@ std::string ViewProviderDatum::getElement(const SoDetail* detail) const
             element = line_detail->getLineIndex();
         } else if (detail->getTypeId() == SoFaceDetail::getClassTypeId()) {
             const SoFaceDetail* face_detail = static_cast<const SoFaceDetail*>(detail);
-            element = face_detail->getFaceIndex();
+            element = face_detail->getPartIndex();
         } else if (detail->getTypeId() == SoPointDetail::getClassTypeId()) {
             const SoPointDetail* point_detail = static_cast<const SoPointDetail*>(detail);
             element = point_detail->getCoordinateIndex();
@@ -324,6 +324,8 @@ void ViewProviderDatum::updateExtents () {
 }
 
 void ViewProviderDatum::setExtents (const SbBox3f &bbox) {
+    if(bbox.isEmpty())
+        return;
     const SbVec3f & min = bbox.getMin ();
     const SbVec3f & max = bbox.getMax ();
     setExtents ( Base::BoundBox3d ( min.getValue()[0], min.getValue()[1], min.getValue()[2],
