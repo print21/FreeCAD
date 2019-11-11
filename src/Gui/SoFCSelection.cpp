@@ -975,7 +975,7 @@ SoFCSelection::setOverride(SoGLRenderAction * action, SelContextPtr ctx)
 
     Styles mystyle = (Styles) this->style.getValue();
 
-    if(mystyle == SoFCSelection::BOX) {
+    if(mystyle == SoFCSelection::BOX || ViewParams::instance()->getShowSelectionBoundingBox()) {
         SoFCSelectionRoot::renderBBox(
                 action,this,preselected?ctx->highlightColor:ctx->selectionColor);
         this->uniqueId = oldId;
