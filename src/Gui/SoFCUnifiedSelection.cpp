@@ -1475,8 +1475,8 @@ SoFCSelectionRoot* SoFCSelectionRoot::ShapeColorNode;
 
 SO_NODE_SOURCE(SoFCSelectionRoot)
 
-SoFCSelectionRoot::SoFCSelectionRoot(bool trackCacheMode)
-    :SoFCSeparator(trackCacheMode)
+SoFCSelectionRoot::SoFCSelectionRoot(bool trackCacheMode, ViewProvider *vp)
+    :SoFCSeparator(trackCacheMode), viewProvider(vp)
 {
     SO_NODE_CONSTRUCTOR(SoFCSelectionRoot);
     SO_NODE_ADD_FIELD(selectionStyle,(Full));
@@ -1505,6 +1505,10 @@ void SoFCSelectionRoot::finish()
 {
     so_bbox_cleanup();
     atexit_cleanup();
+}
+
+void SoFCSelectionRoot::setViewProvider(ViewProvider *vp) {
+    viewProvider = vp;
 }
 
 SoNode *SoFCSelectionRoot::getCurrentRoot(bool front, SoNode *def) {
@@ -1632,15 +1636,13 @@ void SoFCSelectionRoot::setupSelectionLineRendering(
 }
 
 bool SoFCSelectionRoot::renderBBox(
-        SoGLRenderAction *action, SoNode *node, SbColor color) 
+        SoGLRenderAction *action, SoNode *node, const SbColor &color) 
 {
     auto data = (SoFCBBoxRenderInfo*) so_bbox_storage->get();
     if (data->bboxaction == NULL) {
         // The viewport region will be replaced every time the action is
         // used, so we can just feed it a dummy here.
         data->bboxaction = new SoGetBoundingBoxAction(SbViewportRegion());
-        data->cube = new SoCube;
-        data->cube->ref();
     }
 
     auto state = action->getState();
@@ -1649,15 +1651,34 @@ bool SoFCSelectionRoot::renderBBox(
             && ViewParams::instance()->getShowSelectionOnTop())
         return false;
 
-    SbBox3f bbox;
     data->bboxaction->setViewportRegion(action->getViewportRegion());
     SoSwitchElement::set(data->bboxaction->getState(), SoSwitchElement::get(action->getState()));
     data->bboxaction->apply(node);
-    bbox = data->bboxaction->getBoundingBox();
-    if(bbox.isEmpty())
+    SbXfBox3f xbbox = data->bboxaction->getXfBoundingBox();
+    if(xbbox.isEmpty())
         return false;
 
+    xbbox.transform(SoModelMatrixElement::get(state));
+    renderBBox(action,node,xbbox.project(),color);
+    return true;
+}
+
+bool SoFCSelectionRoot::renderBBox(
+        SoGLRenderAction *action, SoNode *node, const SbBox3f &bbox, SbColor color) 
+{
+    auto data = (SoFCBBoxRenderInfo*) so_bbox_storage->get();
+    if (data->cube == NULL) {
+        data->cube = new SoCube;
+        data->cube->ref();
+    }
+
+    SoState *state = action->getState();
     state->push();
+
+    // reset model matrix, since we will transform and project the bounding box
+    // by ourself, so that it is always rendered to be aligned with the global
+    // axes regardless of the current model matrix.
+    SoGLModelMatrixElement::makeIdentity(state,node);
 
     uint32_t packed = color.getPackedValue(0.0);
     setupSelectionLineRendering(state,node,packed);
@@ -1667,9 +1688,9 @@ bool SoFCSelectionRoot::renderBBox(
 
     float x, y, z;
     bbox.getSize(x, y, z);
-    data->cube->width  = x+0.001;
-    data->cube->height  = y+0.001;
-    data->cube->depth = z+0.001;
+    data->cube->width  = x;
+    data->cube->height  = y;
+    data->cube->depth = z;
 
     SoModelMatrixElement::translateBy(state,node,bbox.getCenter());
 
@@ -1677,9 +1698,19 @@ bool SoFCSelectionRoot::renderBBox(
     mb.sendFirst();
 
     FCDepthFunc guard;
+    GLboolean clamped = true;
+
+    clamped = glIsEnabled(GL_DEPTH_CLAMP);
+    if(!clamped)
+        glEnable(GL_DEPTH_CLAMP);
+
     if(!action->isRenderingDelayedPaths())
         guard.set(GL_LEQUAL);
+
     data->cube->GLRender(action);
+
+    if(!clamped)
+        glDisable(GL_DEPTH_CLAMP);
 
     state->pop();
     return true;
@@ -1737,7 +1768,18 @@ bool SoFCSelectionRoot::_renderPrivate(SoGLRenderAction * action, bool inPath, b
                 else
                     SoSeparator::GLRenderBelowPath(action);
             }
-            renderBBox(action,this,ctx->hlAll?ctx->hlColor:ctx->selColor);
+
+            if(!ViewParams::instance()->getShowSelectionOnTop()) {
+                SoCacheElement::invalidate(state);
+                if(ViewParams::instance()->getUseTightBoundingBox() && viewProvider) {
+                    Base::Matrix4D mat = ViewProvider::convert(SoModelMatrixElement::get(state));
+                    auto fcbox = viewProvider->getBoundingBox(0,&mat);
+                    SbBox3f bbox(fcbox.MinX,fcbox.MinY,fcbox.MinZ,
+                                fcbox.MaxX,fcbox.MaxY,fcbox.MaxZ);
+                    renderBBox(action,this,bbox,ctx->hlAll?ctx->hlColor:ctx->selColor);
+                } else
+                    renderBBox(action,this,ctx->hlAll?ctx->hlColor:ctx->selColor);
+            }
             return false;
         }
     }
@@ -2167,7 +2209,8 @@ void FCDepthFunc::set(int32_t f) {
 
 SO_NODE_SOURCE(SoFCPathAnnotation)
 
-SoFCPathAnnotation::SoFCPathAnnotation()
+SoFCPathAnnotation::SoFCPathAnnotation(ViewProvider *vp, const char *sub, View3DInventorViewer *viewer)
+    :viewProvider(vp), subname(sub?sub:""), viewer(viewer)
 {
     SO_NODE_CONSTRUCTOR(SoFCPathAnnotation);
     path = 0;
@@ -2270,7 +2313,17 @@ void SoFCPathAnnotation::GLRenderBelowPath(SoGLRenderAction * action)
                 SoFCSelectionRoot::checkSelection(sel,selColor,hl,hlColor);
                 if(!sel && !hl)
                     selColor.setPackedValue(ViewParams::instance()->getSelectionColor(),trans);
-                SoFCSelectionRoot::renderBBox(action,this,hl?hlColor:selColor);
+
+                if(ViewParams::instance()->getUseTightBoundingBox() && viewProvider && !det) {
+                    Base::Matrix4D mat = ViewProvider::convert(SoModelMatrixElement::get(action->getState()));
+                    _SwitchStack.emplace_back(nullptr);
+                    auto fcbox = viewProvider->getBoundingBox(subname.c_str(),&mat,true,viewer);
+                    _SwitchStack.pop_back();
+                    SbBox3f bbox(fcbox.MinX,fcbox.MinY,fcbox.MinZ,
+                                 fcbox.MaxX,fcbox.MaxY,fcbox.MaxZ);
+                    SoFCSelectionRoot::renderBBox(action,this,bbox,hl?hlColor:selColor);
+                } else
+                    SoFCSelectionRoot::renderBBox(action,this,hl?hlColor:selColor);
             }
         }
 

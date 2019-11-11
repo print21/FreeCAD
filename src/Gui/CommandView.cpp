@@ -2483,11 +2483,11 @@ static std::vector<std::string> getBoxSelection(const Base::Vector3d *dir,
     // DO NOT check this view object Visibility, let the caller do this. Because
     // we may be called by upper object hierarchy that manages our visibility.
 
-    auto bbox3 = vp->getBoundingBox(0,transform);
+    auto bbox3 = vp->getBoundingBox(0,&mat,transform);
     if(!bbox3.IsValid())
         return ret;
 
-    auto bbox = bbox3.Transformed(mat).ProjectBox(&proj);
+    auto bbox = bbox3.ProjectBox(&proj);
 
     // check if both two boundary points are inside polygon, only
     // valid since we know the given polygon is a box.
@@ -3494,6 +3494,19 @@ VIEW_CMD_DEF(SelBoundingBox, ShowSelectionBoundingBox)
 }
 
 //======================================================================
+// Std_TightBoundingBox
+//======================================================================
+VIEW_CMD_DEF(TightBoundingBox, UseTightBoundingBox)
+{
+  sGroup        = QT_TR_NOOP("View");
+  sMenuText     = QT_TR_NOOP("Tighten bounding box");
+  sToolTipText  = QT_TR_NOOP("Show more accurate bounds when using bounding box selection style");
+  sWhatsThis    = "Std_TightBoundingBox";
+  sStatusTip    = sToolTipText;
+  eType         = NoDefaultAction;
+}
+
+//======================================================================
 // Std_SelOnTop
 //======================================================================
 VIEW_CMD_DEF(SelOnTop, ShowSelectionOnTop)
@@ -3539,6 +3552,7 @@ public:
         bCanLog       = false;
 
         addCommand(new StdCmdSelBoundingBox());
+        addCommand(new StdCmdTightBoundingBox());
         addCommand(new StdCmdSelOnTop());
         addCommand(new StdCmdPreselEdgeOnly());
         addCommand(new StdTreePreSelection());

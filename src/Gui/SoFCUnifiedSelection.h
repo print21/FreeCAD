@@ -47,6 +47,7 @@ class SoPickedPointList;
 class SoRayPickAction;
 class SbViewportRegion;
 class SbVec2s;
+class SbBox3f;
 
 namespace Gui {
 
@@ -210,7 +211,7 @@ class GuiExport SoFCPathAnnotation : public SoSeparator {
 public:
     static void initClass(void);
     static void finish(void);
-    SoFCPathAnnotation();
+    SoFCPathAnnotation(ViewProvider *vp=0, const char *subname=0, View3DInventorViewer *viewer=0);
 
     void setPath(SoPath *);
     SoPath *getPath() {return path;}
@@ -230,6 +231,9 @@ protected:
     virtual ~SoFCPathAnnotation();
 
 protected:
+    ViewProvider *viewProvider;
+    std::string subname;
+    View3DInventorViewer *viewer;
     SoPath *path;
     SoTempPath *tmpPath;
     bool det;
@@ -333,7 +337,10 @@ class GuiExport SoFCSelectionRoot : public SoFCSeparator {
 public:
     static void initClass(void);
     static void finish(void);
-    SoFCSelectionRoot(bool trackCacheMode=false);
+    SoFCSelectionRoot(bool trackCacheMode=false, ViewProvider *vp=0);
+
+    ViewProvider *getViewProvider() const {return viewProvider;}
+    void setViewProvider(ViewProvider *vp);
 
     virtual void GLRenderBelowPath(SoGLRenderAction * action);
     virtual void GLRenderInPath(SoGLRenderAction * action);
@@ -467,7 +474,8 @@ public:
     };
     SoSFEnum selectionStyle;
 
-    static bool renderBBox(SoGLRenderAction *action, SoNode *node, SbColor color);
+    static bool renderBBox(SoGLRenderAction *action, SoNode *node, const SbColor &color);
+    static bool renderBBox(SoGLRenderAction *action, SoNode *node, const SbBox3f &bbox, SbColor color);
 
     static void setupSelectionLineRendering(SoState *state, SoNode *node, const uint32_t &color);
 
@@ -482,6 +490,8 @@ protected:
         std::unordered_set<SoFCSelectionRoot*> nodeSet;
         size_t offset = 0;
     };
+
+    bool doActionPrivate(Stack &stack, SoAction *);
 
     static SoFCSelectionContextBasePtr getNodeContext(
             Stack &stack, SoNode *node, SoFCSelectionContextBasePtr def);
@@ -519,9 +529,9 @@ protected:
     float transOverride;
     SoColorPacker shapeColorPacker;
 
-    bool doActionPrivate(Stack &stack, SoAction *);
-
     SoFCSelectionCounter selCounter;
+
+    ViewProvider *viewProvider;
 };
 
 /**
