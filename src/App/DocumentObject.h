@@ -181,8 +181,11 @@ public:
     //@{
     /** Set sub-element visibility
      * 
-     * For performance reason, \c element must not contain any further
-     * sub-elements, i.e. there should be no '.' inside \c element.
+     * @param element: child element name. For performance reason, \c element must not
+     * contain any further sub-elements, i.e. there should be no '.' inside \c
+     * element.
+     *
+     * @param visible: visibility
      *
      * @return -1 if element visibility is not supported, 0 if element is not
      * found, 1 if success
@@ -191,10 +194,27 @@ public:
 
     /** Get sub-element visibility
      *
+     * @param element: child element name. For performance reason, \c element must not
+     * contain any further sub-elements, i.e. there should be no '.' inside \c
+     * element.
+     *
      * @return -1 if element visibility is not supported or element not found, 0
      * if element is invisible, or else 1
      */
     virtual int isElementVisible(const char *element) const;
+
+    /** Get sub-element visibility with a given reason
+     *
+     * @param element: child element name. For performance reason, \c element must not
+     * contain any further sub-elements, i.e. there should be no '.' inside \c
+     * element.
+     *
+     * @param reason: @sa GSReason
+     *
+     * @return -1 if element visibility is not supported or element not found, 0
+     * if element is invisible, or else 1
+     */
+    virtual int isElementVisibleEx(const char *element, int reason=GS_DEFAULT) const;
 
     /// return true to activate tree view group object handling and element visibility
     virtual bool hasChildElement() const;
