@@ -131,6 +131,7 @@ SoFCUnifiedSelection::SoFCUnifiedSelection() : pcDocument(0), pcViewer(0), pcRay
     detailPath->ref();
 
     setPreSelection = false;
+    selectAll = false;
     preSelection = -1;
     useNewSelection = ViewParams::instance()->getUseNewSelection();
 
@@ -303,7 +304,7 @@ void SoFCUnifiedSelection::getPickedInfo(std::vector<PickedInfo> &ret,
 void SoFCUnifiedSelection::getPickedInfoOnTop(std::vector<PickedInfo> &ret,
         bool singlePick, std::set<std::pair<ViewProvider*,std::string> > &filter) const
 {
-    if(ViewParams::instance()->getShowSelectionBoundingBox())
+    if(SoFCUnifiedSelection::getShowSelectionBoundingBox())
         return;
 
     SoPath *path = pcViewer->getGroupOnTopPath();
@@ -931,9 +932,22 @@ SoFCUnifiedSelection::handleEvent(SoHandleEventAction * action)
     inherited::handleEvent(action);
 }
 
+static thread_local bool _ShowBoundBox;
+
+bool SoFCUnifiedSelection::getShowSelectionBoundingBox() {
+    return ViewParams::instance()->getShowSelectionBoundingBox()
+        || _ShowBoundBox;
+}
+
 void SoFCUnifiedSelection::GLRenderBelowPath(SoGLRenderAction * action)
 {
+    bool bbox = _ShowBoundBox;
+    if(this->selectAll)
+        _ShowBoundBox = true;
+
     inherited::GLRenderBelowPath(action);
+
+    _ShowBoundBox = bbox;
 
     // nothing picked, so restore the arrow cursor if needed
     if (this->preSelection == 0) {
@@ -1816,7 +1830,7 @@ bool SoFCSelectionRoot::_renderPrivate(SoGLRenderAction * action, bool inPath, b
     SelContextPtr ctx = getRenderContext<SelContext>(this);
 
     int style = selectionStyle.getValue();
-    if((style==SoFCSelectionRoot::Box || ViewParams::instance()->getShowSelectionBoundingBox())
+    if((style==SoFCSelectionRoot::Box || SoFCUnifiedSelection::getShowSelectionBoundingBox())
        && ctx && !ctx->hideAll && (ctx->selAll || ctx->hlAll)) 
     {
         if (style==SoFCSelectionRoot::PassThrough) {
@@ -1829,7 +1843,7 @@ bool SoFCSelectionRoot::_renderPrivate(SoGLRenderAction * action, bool inPath, b
                     SoSeparator::GLRenderBelowPath(action);
             }
 
-            if(!ViewParams::instance()->getShowSelectionOnTop()) {
+            if(_ShowBoundBox || !ViewParams::instance()->getShowSelectionOnTop()) {
                 SoCacheElement::invalidate(state);
                 if(ViewParams::instance()->getUseTightBoundingBox() && viewProvider) {
                     Base::Matrix4D mat = ViewProvider::convert(SoModelMatrixElement::get(state));
@@ -2350,7 +2364,7 @@ void SoFCPathAnnotation::GLRenderBelowPath(SoGLRenderAction * action)
         if(det)
             inherited::GLRenderInPath(action);
         else {
-            bool bbox = ViewParams::instance()->getShowSelectionBoundingBox();
+            bool bbox = SoFCUnifiedSelection::getShowSelectionBoundingBox();
             if(!bbox) {
                 for(int i=0,count=path->getLength();i<count;++i) {
                     auto node = path->getNodeFromTail(i);
