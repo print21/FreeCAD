@@ -3507,6 +3507,19 @@ VIEW_CMD_DEF(TightBoundingBox, UseTightBoundingBox)
 }
 
 //======================================================================
+// Std_SelectionFaceWire
+//======================================================================
+VIEW_CMD_DEF(SelectionFaceWire, SelectionFaceWire)
+{
+  sGroup        = QT_TR_NOOP("View");
+  sMenuText     = QT_TR_NOOP("Show selected face wires");
+  sToolTipText  = QT_TR_NOOP("Show hidden tirangulation wires for selected face");
+  sWhatsThis    = "Std_SelectionFaceWire";
+  sStatusTip    = sToolTipText;
+  eType         = NoDefaultAction;
+}
+
+//======================================================================
 // Std_SelOnTop
 //======================================================================
 VIEW_CMD_DEF(SelOnTop, ShowSelectionOnTop)
@@ -3553,6 +3566,7 @@ public:
 
         addCommand(new StdCmdSelBoundingBox());
         addCommand(new StdCmdTightBoundingBox());
+        addCommand(new StdCmdSelectionFaceWire());
         addCommand(new StdCmdSelOnTop());
         addCommand(new StdCmdPreselEdgeOnly());
         addCommand(new StdTreePreSelection());
