@@ -1618,7 +1618,7 @@ std::pair<bool,SoFCSelectionContextBasePtr*> SoFCSelectionRoot::findActionContex
 }
 
 void SoFCSelectionRoot::setupSelectionLineRendering(
-        SoState *state, SoNode *node, const uint32_t &color)
+        SoState *state, SoNode *node, const uint32_t *color)
 {
     float width = SoLineWidthElement::get(state);
     if(width < 1.0)
@@ -1630,9 +1630,11 @@ void SoFCSelectionRoot::setupSelectionLineRendering(
     SoLineWidthElement::set(state,width);
 
     SoLightModelElement::set(state,SoLightModelElement::BASE_COLOR);
+    SoOverrideElement::setLightModelOverride(state, node, TRUE);
     SoMaterialBindingElement::set(state,SoMaterialBindingElement::OVERALL);
+    SoOverrideElement::setMaterialBindingOverride(state, node, TRUE);
 
-    SoLazyElement::setPacked(state, node, 1, &color, false);
+    SoLazyElement::setPacked(state, node, 1, color, false);
 }
 
 bool SoFCSelectionRoot::renderBBox(
@@ -1681,7 +1683,7 @@ bool SoFCSelectionRoot::renderBBox(
     SoGLModelMatrixElement::makeIdentity(state,node);
 
     uint32_t packed = color.getPackedValue(0.0);
-    setupSelectionLineRendering(state,node,packed);
+    setupSelectionLineRendering(state,node,&packed);
 
     SoDrawStyleElement::set(state,SoDrawStyleElement::LINES);
     SoLineWidthElement::set(state,ViewParams::instance()->getSelectionBBoxLineWidth());
