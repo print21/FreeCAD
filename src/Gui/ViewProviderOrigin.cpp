@@ -26,6 +26,8 @@
 
 #ifndef _PreComp_
 # include <QApplication>
+# include <QMenu>
+# include <QAction>
 # include <QPixmap>
 # include <Inventor/actions/SoGetBoundingBoxAction.h>
 # include <Inventor/nodes/SoSeparator.h>
@@ -47,6 +49,7 @@
 #include "BitmapFactory.h"
 #include "Document.h"
 #include "Tree.h"
+#include "ViewParams.h"
 #include "View3DInventor.h"
 #include "View3DInventorViewer.h"
 #include "SoFCUnifiedSelection.h"
@@ -161,20 +164,56 @@ void ViewProviderOrigin::resetTemporaryVisibility() {
 
 double ViewProviderOrigin::defaultSize()
 {
-    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/View");
-    return 0.25 * hGrp->GetFloat("NewDocumentCameraScale",100.0);
+    return 0.25 * ViewParams::instance()->getNewDocumentCameraScale();
 }
 
 bool ViewProviderOrigin::isTemporaryVisibility() {
     return !tempVisMap.empty();
 }
 
+void ViewProviderOrigin::updateData(const App::Property *prop) {
+    App::Origin* origin = static_cast<App::Origin*> ( getObject() );
+    if(origin) {
+        if(prop == &origin->OriginFeatures && origin->OriginFeatures.getSize())
+            Size.touch();
+    }
+    ViewProviderDocumentObject::updateData ( prop );
+}
+
+bool ViewProviderOrigin::doubleClicked() {
+    App::Origin* origin = static_cast<App::Origin*> ( getObject() );
+    if(origin)
+        origin->initObjects();
+    return true;
+}
+
+void ViewProviderOrigin::setupContextMenu(QMenu* menu, QObject* receiver, const char* member)
+{
+    App::Origin* origin = static_cast<App::Origin*> ( getObject() );
+    if(origin && !origin->OriginFeatures.getSize()) {
+        QAction* act = menu->addAction(QObject::tr("Create origin features"), receiver, member);
+        act->setData(QVariant((int)ViewProvider::Default));
+    }
+}
+
+bool ViewProviderOrigin::setEdit(int ModNum)
+{
+    if(ModNum == ViewProvider::Default)
+        return doubleClicked();
+    return false;
+}
+
 void ViewProviderOrigin::onChanged(const App::Property* prop) {
-    if (prop == &Size) {
+    App::Origin* origin = static_cast<App::Origin*> ( getObject() );
+    if(!origin) {
+        ViewProviderDocumentObject::onChanged ( prop );
+        return;
+    }
+
+    if (prop == &Size && origin->OriginFeatures.getSize()) {
         try {
             Gui::Application *app = Gui::Application::Instance;
             Base::Vector3d sz = Size.getValue ();
-            App::Origin* origin = static_cast<App::Origin*> ( getObject() );
 
             // Calculate axes and planes sizes
             double szXY = std::max ( sz.x, sz.y );
@@ -212,6 +251,9 @@ void ViewProviderOrigin::onChanged(const App::Property* prop) {
             if (!doc->testStatus(App::Document::Restoring))
                 Base::Console().Error ("%s\n", ex.what() );
         }
+    } else if (prop == &Visibility) {
+        if(Visibility.getValue())
+            origin->initObjects();
     }
 
     ViewProviderDocumentObject::onChanged ( prop );
