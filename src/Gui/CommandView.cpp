@@ -2725,7 +2725,8 @@ static void selectionCallback(void * ud, SoEventCallback * cb)
         }
 
         for(auto obj : doc->getObjects()) {
-            if(App::GeoFeatureGroupExtension::getGroupOfObject(obj))
+            if(App::GeoFeatureGroupExtension::isNonGeoGroup(obj)
+                    || App::GeoFeatureGroupExtension::getGroupOfObject(obj))
                 continue;
 
             auto vp = dynamic_cast<ViewProviderDocumentObject*>(Application::Instance->getViewProvider(obj));
