@@ -94,6 +94,7 @@ public:
     FC_VIEW_PARAM(UseTightBoundingBox,bool,Bool,true) \
     FC_VIEW_PARAM(UseBoundingBoxCache,bool,Bool,true) \
     FC_VIEW_PARAM(SelectionFaceWire,bool,Bool,false) \
+    FC_VIEW_PARAM(NewDocumentCameraScale,double,Float,100.0) \
 
 #undef FC_VIEW_PARAM
 #define FC_VIEW_PARAM(_name,_ctype,_type,_def) \
