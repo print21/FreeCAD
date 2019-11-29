@@ -837,9 +837,20 @@ bool ElementNameComp::operator()(const std::string &a, const std::string &b) con
         return a.size()<b.size();
     size_t i=0;
 
-    if(b[0] == '#') {
-        if(a[0]!='#')
-            return true;
+	//avoid one starts with '#' and another starts without '#'
+	if (b[0] == '#' && a[0] != '#')
+	{
+		return true;
+	}
+
+	if (a[0] == '#' && b[0] != '#')
+	{
+		return false;
+	}
+
+    if(b[0] == '#')
+	{
+		assert(a[0] == '#');
         // If both string starts with '#', compare the following hex digits by
         // its integer value.
         int res = 0;
