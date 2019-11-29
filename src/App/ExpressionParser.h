@@ -369,7 +369,7 @@ protected:
 /**
   * Class implementing a boolean expression.
   *
-  */
+  
 
 class AppExport BooleanExpression : public NumberExpression {
     EXPR_TYPESYSTEM_HEADER();
@@ -383,7 +383,7 @@ protected:
     virtual Py::Object _getPyValue(int *jumpCode=0) const override;
     virtual ExpressionPtr _copy() const;
 };
-
+*/
 
 /**
   * Class implementing an infix expression.
