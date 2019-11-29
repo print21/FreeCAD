@@ -342,4 +342,9 @@ typedef unsigned __int64    uint64_t;
 //#	define _PreComp_                  // use precompiled header
 #endif
 
+//snprintf is defined when _MSC_VER >= 1900
+#if defined _MSC_VER && _MSC_VER >= 1900
+#define HAVE_SNPRINTF
+#endif
+
 #endif //FC_CONFIG_H
