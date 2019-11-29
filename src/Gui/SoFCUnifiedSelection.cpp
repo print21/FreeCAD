@@ -1084,7 +1084,7 @@ SoFCSelectionRoot::SoFCSelectionRoot(bool trackCacheMode)
     SO_NODE_ADD_FIELD(selectionStyle,(FULL));
     SO_NODE_DEFINE_ENUM_VALUE(SelectStyles, FULL);
     SO_NODE_DEFINE_ENUM_VALUE(SelectStyles, BOX);
-    SO_NODE_DEFINE_ENUM_VALUE(SelectStyles, PASSTHROUGH);
+    SO_NODE_DEFINE_ENUM_VALUE(SelectStyles, _PASSTHROUGH);
     SO_NODE_SET_SF_ENUM_TYPE(selectionStyle, SelectStyles);
 }
 
@@ -1289,7 +1289,7 @@ bool SoFCSelectionRoot::_renderPrivate(SoGLRenderAction * action, bool inPath) {
     if((style==SoFCSelectionRoot::BOX || ViewParams::instance()->getShowSelectionBoundingBox())
        && ctx && !ctx->hideAll && (ctx->selAll || ctx->hlAll)) 
     {
-        if(style==SoFCSelectionRoot::PASSTHROUGH)
+        if(style==SoFCSelectionRoot::_PASSTHROUGH)
             style = SoFCSelectionRoot::BOX;
         else {
             renderBBox(action,this,ctx->hlAll?ctx->hlColor:ctx->selColor);
