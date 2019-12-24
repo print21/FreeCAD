@@ -87,6 +87,7 @@ CmdMoveCW       = ['G2', 'G02']
 CmdMoveCCW      = ['G3', 'G03']
 CmdMoveArc      = CmdMoveCW + CmdMoveCCW
 CmdMove         = CmdMoveStraight + CmdMoveArc
+CmdMoveAll      = CmdMove + CmdMoveRapid
 
 def isRoughly(float1, float2, error=Tolerance):
     """isRoughly(float1, float2, [error=Tolerance])
@@ -381,6 +382,8 @@ def wireForPath(path, startPoint = Vector(0, 0, 0)):
                     rapid.append(edge)
                 edges.append(edge)
                 startPoint = commandEndPoint(cmd, startPoint)
+    if not edges:
+        return (None, rapid)
     return (Part.Wire(edges), rapid)
 
 def wiresForPath(path, startPoint = Vector(0, 0, 0)):

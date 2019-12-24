@@ -242,6 +242,7 @@ void QGIView::mousePressEvent(QGraphicsSceneMouseEvent * event)
 
 void QGIView::mouseReleaseEvent(QGraphicsSceneMouseEvent * event)
 {
+    //TODO: this should be done in itemChange
     if(!m_locked) {
         if (!isInnerView()) {
             double tempX = x(),
@@ -337,13 +338,6 @@ void QGIView::updateView(bool update)
         setFlag(QGraphicsItem::ItemIsMovable, true);
     }
 
-    if (getViewObject()->X.isTouched() ||                   //change in feat position
-        getViewObject()->Y.isTouched()) {
-        double featX = Rez::guiX(getViewObject()->X.getValue());
-        double featY = Rez::guiX(getViewObject()->Y.getValue());
-        setPosition(featX,featY);
-    }
-
     double appRotation = getViewObject()->Rotation.getValue();
     double guiRotation = rotation();
     if (!TechDraw::DrawUtil::fpCompare(appRotation,guiRotation)) {
@@ -412,6 +406,13 @@ void QGIView::toggleCache(bool state)
 
 void QGIView::draw()
 {
+//    Base::Console().Message("QGIV::draw()\n");
+    double x, y;
+    if (getViewObject() != nullptr) {
+        x = Rez::guiX(getViewObject()->X.getValue());
+        y = Rez::guiX(getViewObject()->Y.getValue());
+        setPosition(x, y);
+    }
     if (isVisible()) {
         drawBorder();
         show();
@@ -502,7 +503,8 @@ void QGIView::drawBorder()
 
     double lockX = frameArea.left();
     double lockY = frameArea.bottom() - m_lockHeight;
-    if (feat->isLocked()) {
+    if (feat->isLocked() &&
+        feat->showLock()) {
         m_lock->setZValue(ZVALUE::LOCK);
         m_lock->setPos(lockX,lockY);
         m_lock->show();
@@ -707,7 +709,7 @@ int QGIView::calculateFontPixelWidth(const QFont &font)
 
 const double QGIView::DefaultFontSizeInMM = 5.0;
 
-void QGIView::dumpRect(char* text, QRectF r) {
+void QGIView::dumpRect(const char* text, QRectF r) {
     Base::Console().Message("DUMP - %s - rect: (%.3f,%.3f) x (%.3f,%.3f)\n",text,
                             r.left(),r.top(),r.right(),r.bottom());
 }
@@ -720,6 +722,7 @@ void QGIView::makeMark(double x, double y, QColor c)
     vItem->setWidth(2.0);
     vItem->setRadius(20.0);
     vItem->setNormalColor(c);
+    vItem->setFillColor(c);
     vItem->setPrettyNormal();
     vItem->setZValue(ZVALUE::VERTEX);
 }

@@ -68,7 +68,7 @@ def makeWall(baseobj=None,length=None,width=None,height=None,align="Center",face
     if FreeCAD.GuiUp:
         _ViewProviderWall(obj.ViewObject)
     if baseobj:
-        if baseobj.isDerivedFrom("Part::Feature") or baseobj.isDerivedFrom("Mesh::Feature"):
+        if hasattr(baseobj,'Shape') or baseobj.isDerivedFrom("Mesh::Feature"):
             obj.Base = baseobj
         else:
             FreeCAD.Console.PrintWarning(str(translate("Arch","Walls can only be based on Part or Mesh objects")))
@@ -249,7 +249,7 @@ class _CommandWall:
             if Draft.getType(obj) == "Wall":
                 if not obj in self.existing:
                     self.existing.append(obj)
-        if point == None:
+        if point is None:
             self.tracker.finalize()
             return
         self.points.append(point)
@@ -554,6 +554,12 @@ class _Wall(ArchComponent.Component):
         if not "Offset" in lp:
             obj.addProperty("App::PropertyDistance","Offset","Wall",QT_TRANSLATE_NOOP("App::Property","The offset between this wall and its baseline (only for left and right alignments)"))
 
+        # See getExtrusionData(), removeSplitters are no longer used
+        #if not "Refine" in lp:
+        #    obj.addProperty("App::PropertyEnumeration","Refine","Wall",QT_TRANSLATE_NOOP("App::Property","Select whether or not and the method to remove splitter of the Wall. Currently Draft removeSplitter and Part removeSplitter available but may not work on complex sketch."))
+        #    obj.Refine = ['No','DraftRemoveSplitter','PartRemoveSplitter']
+        # TODO - To implement in Arch Component ?
+
         if not "MakeBlocks" in lp:
             obj.addProperty("App::PropertyBool","MakeBlocks","Blocks",QT_TRANSLATE_NOOP("App::Property","Enable this to make the wall generate blocks"))
         if not "BlockLength" in lp:
@@ -595,16 +601,33 @@ class _Wall(ArchComponent.Component):
             extv = extdata[2].Rotation.multVec(extdata[1])
             if isinstance(bplates,list):
                 shps = []
+                # Test : if base is Sketch, then fuse all solid; otherwise, makeCompound
+                sketchBaseToFuse = obj.Base.getLinkedObject().isDerivedFrom("Sketcher::SketchObject")
                 for b in bplates:
                     b.Placement = extdata[2].multiply(b.Placement)
                     b = b.extrude(extv)
-                    shps.append(b)
-                base = Part.makeCompound(shps)
+
+                    # See getExtrusionData() - not fusing baseplates there - fuse solids here
+                    # Remarks - If solids are fused, but exportIFC.py use underlying baseplates w/o fuse, the result in ifc look slightly different from in FC.
+
+                    if sketchBaseToFuse:
+                        if shps:
+                            shps = shps.fuse(b) #shps.fuse(b)
+                        else:
+                            shps=b
+                    else:
+                        shps.append(b)
+                    # TODO - To let user to select whether to fuse (slower) or to do a compound (faster) only ?
+
+                if sketchBaseToFuse:
+                    base = shps
+                else:
+                    base = Part.makeCompound(shps)
             else:
                 bplates.Placement = extdata[2].multiply(bplates.Placement)
                 base = bplates.extrude(extv)
         if obj.Base:
-            if obj.Base.isDerivedFrom("Part::Feature"):
+            if hasattr(obj.Base,'Shape'):
                 if obj.Base.Shape.isNull():
                     return
                 if not obj.Base.Shape.isValid():
@@ -737,7 +760,7 @@ class _Wall(ArchComponent.Component):
 
         # set the length property
         if obj.Base:
-            if obj.Base.isDerivedFrom("Part::Feature"):
+            if hasattr(obj.Base,'Shape'):
                 if obj.Base.Shape.Edges:
                     if not obj.Base.Shape.Faces:
                         if hasattr(obj.Base.Shape,"Length"):
@@ -756,7 +779,7 @@ class _Wall(ArchComponent.Component):
     def onChanged(self, obj, prop):
         if prop == "Length":
             if obj.Base and obj.Length.Value and hasattr(self,"oldLength") and (self.oldLength != None) and (self.oldLength != obj.Length.Value):
-                if obj.Base.isDerivedFrom("Part::Feature"):
+                if hasattr(obj.Base,'Shape'):
                     if len(obj.Base.Shape.Edges) == 1:
                         import DraftGeomUtils
                         e = obj.Base.Shape.Edges[0]
@@ -845,7 +868,7 @@ class _Wall(ArchComponent.Component):
                         elif varwidth:
                             layers.append(varwidth)
         if obj.Base:
-            if obj.Base.isDerivedFrom("Part::Feature"):
+            if hasattr(obj.Base,'Shape'):
                 if obj.Base.Shape:
                     if obj.Base.Shape.Solids:
                         return None
@@ -958,21 +981,38 @@ class _Wall(ArchComponent.Component):
                                 sh.fix(0.1,0,1) # fixes self-intersecting wires
                                 f = Part.Face(sh)
                                 if baseface:
-                                    if layers:
-                                        if layers[i] >= 0:
-                                            baseface.append(f)
-                                    else:
-                                        baseface = baseface.fuse(f)
-                                        # baseface = baseface.removeSplitter()
-                                        s = DraftGeomUtils.removeSplitter(baseface)
-                                        if s:
-                                            baseface = s
+
+                                    # To allow exportIFC.py to work properly on sketch, which use only 1st face / wire, do not fuse baseface here
+                                    # So for a sketch with multiple wires, each returns individual face (rather than fusing together) for exportIFC.py to work properly
+                                    # "ArchWall - Based on Sketch Issues" - https://forum.freecadweb.org/viewtopic.php?f=39&t=31235
+                                    #
+                                    baseface.append(f)
+                                    # The above make Refine methods below (in else) useless, regardless removeSpitters yet to be improved for cases do not work well
+
+                                    '''  Whether layers or not, all baseface.append(f) '''
+
+                                    #if layers:
+                                    #    if layers[i] >= 0:
+                                    #        baseface.append(f)
+                                    #else:
+                                        #baseface = baseface.fuse(f)
+                                        #if obj.Refine == 'DraftRemoveSplitter':
+                                        #    s = DraftGeomUtils.removeSplitter(baseface)
+                                        #    if s:
+                                        #        baseface = s
+                                        #elif obj.Refine == 'PartRemoveSplitter':
+                                        #    baseface = baseface.removeSplitter()
                                 else:
-                                    if layers:
-                                        if layers[i] >= 0:
-                                            baseface = [f]
-                                    else:
-                                        baseface = f
+                                    baseface = [f]
+
+                                    '''  Whether layers or not, all baseface = [f] '''
+
+                                    #if layers:
+                                    #    if layers[i] >= 0:
+                                    #        baseface = [f]
+                                    #else:
+                                        #baseface = f
+
                         if baseface:
                             base,placement = self.rebase(baseface)
         else:
@@ -1031,7 +1071,9 @@ class _ViewProviderWall(ArchComponent.ViewProviderComponent):
         self.Object = vobj.Object
         from pivy import coin
         tex = coin.SoTexture2()
-        tex.image = Draft.loadTexture(Draft.svgpatterns()['simple'][1], 128)
+        image = Draft.loadTexture(Draft.svgpatterns()['simple'][1], 128)
+        if not image is None:
+            tex.image = image
         texcoords = coin.SoTextureCoordinatePlane()
         s = FreeCAD.ParamGet("User parameter:BaseApp/Preferences/Mod/Arch").GetFloat("patternScale",0.01)
         texcoords.directionS.setValue(s,0,0)

@@ -222,6 +222,7 @@ class ObjectJob:
         PathLog.debug('taking down tool controller')
         for tc in obj.ToolController:
             PathUtil.clearExpressionEngine(tc)
+            tc.Proxy.onDelete(tc)
             doc.removeObject(tc.Name)
         obj.ToolController = []
         # SetupSheet
@@ -344,12 +345,14 @@ class ObjectJob:
     def execute(self, obj):
         obj.Path = obj.Operations.Path
 
-    def addOperation(self, op, before = None):
+    def addOperation(self, op, before = None, removeBefore = False):
         group = self.obj.Operations.Group
         if op not in group:
             if before:
                 try:
                     group.insert(group.index(before), op)
+                    if removeBefore:
+                        group.remove(before)
                 except Exception as e: # pylint: disable=broad-except
                     PathLog.error(e)
                     group.append(op)

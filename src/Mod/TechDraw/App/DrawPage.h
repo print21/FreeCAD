@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (c) Jürgen Riegel          (juergen.riegel@web.de) 2007     *
+ *   Copyright (c) 2007 Jürgen Riegel <juergen.riegel@web.de>              *
  *                                                                         *
  *   This file is part of the FreeCAD CAx development system.              *
  *                                                                         *
@@ -103,6 +103,7 @@ public:
     static bool AllowPageOverride(void);
     void forceRedraw(bool b) { m_forceRedraw = b; }
     bool forceRedraw(void)   { return m_forceRedraw; }
+    void redrawCommand();
 
 protected:
     void onBeforeChange(const App::Property* prop) override;

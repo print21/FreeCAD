@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (c) Jürgen Riegel          (juergen.riegel@web.de) 2002     *
+ *   Copyright (c) 2002 Jürgen Riegel <juergen.riegel@web.de>              *
  *                                                                         *
  *   This file is part of the FreeCAD CAx development system.              *
  *                                                                         *
@@ -163,7 +163,7 @@ App::DocumentObject *Feature::getSubObject(const char *subname,
             bool copy = sCopy?true:false;
             if(!copy) {
                 // Work around OCC bug on transforming circular edge with an
-                // offsetted surface. The bug probably affect other shape type,
+                // offset surface. The bug probably affect other shape type,
                 // too.
                 TopExp_Explorer exp(ts.getShape(),TopAbs_EDGE);
                 if(exp.More()) {

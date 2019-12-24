@@ -310,6 +310,7 @@ class CommandBuildingPart:
         FreeCADGui.addModule("Arch")
         FreeCADGui.doCommand("obj = Arch.makeBuildingPart("+ss+")")
         FreeCADGui.addModule("Draft")
+        FreeCADGui.doCommand("obj.Placement = FreeCAD.DraftWorkingPlane.getPlacement()")
         FreeCADGui.doCommand("Draft.autogroup(obj)")
         FreeCAD.ActiveDocument.commitTransaction()
         FreeCAD.ActiveDocument.recompute()
@@ -334,6 +335,9 @@ class BuildingPart(ArchIFC.IfcProduct):
         pl = obj.PropertiesList
         if not "Height" in pl:
             obj.addProperty("App::PropertyLength","Height","BuildingPart",QT_TRANSLATE_NOOP("App::Property","The height of this object"))
+        if not "HeightPropagate" in pl:
+            obj.addProperty("App::PropertyBool","HeightPropagate","Children",QT_TRANSLATE_NOOP("App::Property","If true, the height value propagates to contained objects"))
+            obj.HeightPropagate = True
         if not "LevelOffset" in pl:
             obj.addProperty("App::PropertyLength","LevelOffset","BuildingPart",QT_TRANSLATE_NOOP("App::Property","The level of the (0,0,0) point of this level"))
         if not "Area" in pl:
@@ -376,7 +380,7 @@ class BuildingPart(ArchIFC.IfcProduct):
             self.svgcache = None
             self.shapecache = None
 
-        if (prop == "Height") and obj.Height.Value:
+        if (prop == "Height" or prop == "HeightPropagate") and obj.Height.Value:
             self.touchChildren(obj)
 
         elif prop == "Placement":
@@ -442,7 +446,7 @@ class BuildingPart(ArchIFC.IfcProduct):
 
         shapes = []
         for child in Draft.getGroupContents(obj):
-            if child.isDerivedFrom("Part::Feature"):
+            if hasattr(child,'Shape'):
                 shapes.extend(child.Shape.Faces)
         return shapes
 
@@ -466,7 +470,7 @@ class BuildingPart(ArchIFC.IfcProduct):
                 if not child.Height.Value:
                     print("Executing ",child.Label)
                     child.Proxy.execute(child)
-            elif Draft.getType(child) in ["Group"]:
+            elif Draft.getType(child) in ["Group","BuildingPart"]:
                 self.touchChildren(child)
 
 
@@ -642,7 +646,7 @@ class ViewProviderBuildingPart:
 
         colors = []
         for child in Draft.getGroupContents(obj):
-            if child.isDerivedFrom("Part::Feature"):
+            if hasattr(child,'Shape'):
                 if len(child.ViewObject.DiffuseColor) == len(child.Shape.Faces):
                     colors.extend(child.ViewObject.DiffuseColor)
                 else:
@@ -835,6 +839,7 @@ class ViewProviderBuildingPart:
                 else:
                     self.wptext = FreeCADGui.draftToolBar.wplabel.text()
                     FreeCADGui.draftToolBar.wplabel.setText(self.Object.Label)
+            FreeCAD.DraftWorkingPlane.lastBuildingPart = self.Object.Name
 
     def writeCamera(self):
 

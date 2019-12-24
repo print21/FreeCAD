@@ -23,7 +23,7 @@
 #ifndef TECHDRAW_COSMETIC_H
 #define TECHDRAW_COSMETIC_H
 
-# include <boost/uuid/uuid_io.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -41,6 +41,8 @@ class TopoDS_Edge;
 namespace TechDraw {
 class DrawViewPart;
 
+
+//general purpose line format specifier
 class TechDrawExport LineFormat
 {
 public:
@@ -60,10 +62,11 @@ public:
     static App::Color getDefEdgeColor();
     static int getDefEdgeStyle();
 
-    void dump(char* title);
+    void dump(const char* title);
     std::string toString() const;
 };
 
+//********** Cosmetic Vertex ***************************************************
 class TechDrawExport CosmeticVertex: public Base::Persistence, public TechDraw::Vertex
 {
     TYPESYSTEM_HEADER();
@@ -75,8 +78,10 @@ public:
     virtual ~CosmeticVertex() = default;
 
     std::string toString(void) const;
-/*    bool fromCSV(std::string& lineSpec);*/
-    void dump(char* title);
+    void dump(const char* title);
+    Base::Vector3d scaled(double factor);
+
+    static bool restoreCosmetic(void);
 
     // Persistence implementer ---------------------
     virtual unsigned int getMemSize(void) const;
@@ -87,15 +92,16 @@ public:
     CosmeticVertex* copy(void) const;
     CosmeticVertex* clone(void) const;
 
-    int            linkGeom;             //connection to corresponding "real" Vertex
+    Base::Vector3d permaPoint;           //permanent, unscaled value
+    int            linkGeom;             //connection to corresponding "geom" Vertex (fragile - index based!)
+                                         //better to do reverse search for CosmeticTag in vertex geometry
     App::Color     color;
     double         size;
     int            style;
-    bool           visible;
+    bool           visible;              //base class vertex also has visible property
 
     boost::uuids::uuid getTag() const;
-    std::string getTagAsString(void) const;
-
+    virtual std::string getTagAsString(void) const;
 
 protected:
     //Uniqueness
@@ -106,7 +112,10 @@ protected:
 
 };
 
-class TechDrawExport CosmeticEdge : public Base::Persistence
+//********** CosmeticEdge ******************************************************
+
+//?? should this inherit BaseGeom or have a BaseGeom member?
+class TechDrawExport CosmeticEdge : public Base::Persistence, public TechDraw::BaseGeom
 {
     TYPESYSTEM_HEADER();
 public:
@@ -121,8 +130,7 @@ public:
     TechDraw::BaseGeom* scaledGeometry(double scale);
 
     virtual std::string toString(void) const;
-/*    virtual bool fromCSV(std::string& lineSpec);*/
-    void dump(char* title);
+    void dump(const char* title);
 
     // Persistence implementer ---------------------
     virtual unsigned int getMemSize(void) const;
@@ -133,10 +141,15 @@ public:
     CosmeticEdge* copy(void) const;
     CosmeticEdge* clone(void) const;
 
+    Base::Vector3d permaStart;         //persistent unscaled start/end points in View coords?
+    Base::Vector3d permaEnd; 
+    double permaRadius;
+    void unscaleEnds(double scale);
     TechDraw::BaseGeom* m_geometry;
     LineFormat m_format;
 
     boost::uuids::uuid getTag() const;
+    virtual std::string getTagAsString(void) const;
 
 protected:
     //Uniqueness
@@ -146,6 +159,8 @@ protected:
     boost::uuids::uuid tag;
 };
 
+//***** CenterLine *************************************************************
+
 class TechDrawExport CenterLine: public Base::Persistence
 {
     TYPESYSTEM_HEADER();
@@ -153,7 +168,8 @@ class TechDrawExport CenterLine: public Base::Persistence
 public:
     CenterLine();
     CenterLine(CenterLine* cl);
-    //set m_faces after using next 2 ctors
+    //set m_faces after using next 3 ctors
+    CenterLine(TechDraw::BaseGeom* bg);
     CenterLine(Base::Vector3d p1, Base::Vector3d p2);
     CenterLine(Base::Vector3d p1, Base::Vector3d p2,
                int m, 
@@ -174,7 +190,6 @@ public:
         EDGE,
         VERTEX
     };
-
 
     // Persistence implementer ---------------------
     virtual unsigned int getMemSize(void) const;
@@ -210,7 +225,7 @@ public:
                                           int vert, double ext,
                                           double m_hShift, double m_vShift,
                                           double rotate, bool flip);
-    void dump(char* title);
+    void dump(const char* title);
     void setShifts(double h, double v);
     double getHShift(void);
     double getVShift(void);
@@ -223,6 +238,8 @@ public:
 
     Base::Vector3d m_start;
     Base::Vector3d m_end;
+
+    //required to recalculate CL after source geom changes.
     std::vector<std::string> m_faces;
     std::vector<std::string> m_edges;
     std::vector<std::string> m_verts;
@@ -235,9 +252,15 @@ public:
     LineFormat m_format;
     bool m_flip2Line;
 
+    TechDraw::BaseGeom* m_geometry;
+
     //Uniqueness
     boost::uuids::uuid getTag() const;
+    virtual std::string getTagAsString(void) const;
+
 protected:
+    void initialize();
+    
     void createNewTag();
     void assignTag(const TechDraw::CenterLine* cl);
 
@@ -245,6 +268,9 @@ protected:
 
 };
 
+//********** GeomFormat ********************************************************
+
+// format specifier for geometric edges (Edge5)
 class TechDrawExport GeomFormat: public Base::Persistence
 {
     TYPESYSTEM_HEADER();
@@ -266,13 +292,16 @@ public:
     GeomFormat* clone(void) const;
 
     std::string toString(void) const;
-    void dump(char* title) const;
+    void dump(const char* title) const;
 
-    int m_geomIndex;
+    //std::string linkTag;
+    int m_geomIndex;            //connection to edgeGeom
     LineFormat m_format;
 
     //Uniqueness
     boost::uuids::uuid getTag() const;
+    virtual std::string getTagAsString(void) const;
+
 protected:
     void createNewTag();
     void assignTag(const TechDraw::GeomFormat* gf);

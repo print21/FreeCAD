@@ -926,6 +926,7 @@ void View3DInventorViewer::onSelectionChanged(const SelectionChanges &_Reason)
     case SelectionChanges::SetPreselect:
         if(Reason.SubType!=2) // 2 means it is triggered from tree view
             break;
+        // fall through
     case SelectionChanges::RmvPreselect:
     case SelectionChanges::RmvPreselectSignal:
     case SelectionChanges::SetSelection:
@@ -1666,6 +1667,18 @@ bool View3DInventorViewer::isSelecting() const
 const std::vector<SbVec2s>& View3DInventorViewer::getPolygon(SelectionRole* role) const
 {
     return navigation->getPolygon(role);
+}
+
+void View3DInventorViewer::setSelectionEnabled(const SbBool enable)
+{
+    SoNode* root = getSceneGraph();
+    static_cast<Gui::SoFCUnifiedSelection*>(root)->selectionRole.setValue(enable);
+}
+
+SbBool View3DInventorViewer::isSelectionEnabled(void) const
+{
+    SoNode* root = getSceneGraph();
+    return static_cast<Gui::SoFCUnifiedSelection*>(root)->selectionRole.getValue();
 }
 
 SbVec2f View3DInventorViewer::screenCoordsOfPath(SoPath* path) const

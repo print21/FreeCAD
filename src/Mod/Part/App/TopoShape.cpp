@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (c) Jürgen Riegel          (juergen.riegel@web.de) 2002     *
+ *   Copyright (c) 2002 Jürgen Riegel <juergen.riegel@web.de>              *
  *                                                                         *
  *   This file is part of the FreeCAD CAx development system.              *
  *                                                                         *
@@ -832,7 +832,7 @@ void TopoShape::write(const char *FileName) const
     }
     else if (File.hasExtension("stl")) {
         // read brep-file
-        exportStl(File.filePath().c_str(),0);
+        exportStl(File.filePath().c_str(), 0.01);
     }
     else{
         throw Base::FileException("Unknown extension");
@@ -2222,7 +2222,7 @@ TopoDS_Shape TopoShape::makeHelix(Standard_Real pitch, Standard_Real height,
     TopoDS_Edge edgeOnSurf = BRepBuilderAPI_MakeEdge(segm , surf);
     TopoDS_Wire wire = BRepBuilderAPI_MakeWire(edgeOnSurf);
     BRepLib::BuildCurves3d(wire);
-    return std::move(wire);
+    return TopoDS_Shape(std::move(wire));
 }
 
 //***********
@@ -2308,7 +2308,7 @@ TopoDS_Shape TopoShape::makeLongHelix(Standard_Real pitch, Standard_Real height,
 
     TopoDS_Wire wire = mkWire.Wire();
     BRepLib::BuildCurves3d(wire);
-    return std::move(wire);
+    return TopoDS_Shape(std::move(wire));
 }
 
 TopoDS_Shape TopoShape::makeThread(Standard_Real pitch,
@@ -2926,9 +2926,10 @@ TopoDS_Shape TopoShape::makeOffset2D(double offset, short joinType, bool fill, b
         TopoDS_Compound result;
         BRep_Builder builder;
         builder.MakeCompound(result);
-        for(TopoDS_Shape &sh : shapesToReturn)
+        for(TopoDS_Shape &sh : shapesToReturn) {
             builder.Add(result, sh);
-        return std::move(result);
+        }
+        return TopoDS_Shape(std::move(result));
     }
     else {
         return shapesToReturn[0];
@@ -3175,7 +3176,7 @@ TopoDS_Shape TopoShape::removeSplitter() const
                 builder.Add(comp, xp.Current());
         }
 
-        return std::move(comp);
+        return TopoDS_Shape(std::move(comp));
     }
 
     return _Shape;
@@ -3206,7 +3207,7 @@ void TopoShape::getDomains(std::vector<Domain>& domains) const
             p.Transform(loc.Transformation());
             Standard_Real X, Y, Z;
             p.Coord (X, Y, Z);
-            domain.points.push_back(Base::Vector3d(X, Y, Z));
+            domain.points.emplace_back(X, Y, Z);
         }
 
         // copy the triangles
@@ -3424,7 +3425,7 @@ void TopoShape::getPoints(std::vector<Base::Vector3d> &Points,
     for (TopExp_Explorer xp(_Shape, TopAbs_VERTEX, TopAbs_EDGE); xp.More(); xp.Next()) {
         gp_Pnt p = BRep_Tool::Pnt(TopoDS::Vertex(xp.Current()));
         Points.push_back(Base::convertTo<Base::Vector3d>(p));
-        Normals.push_back(Base::Vector3d(0,0,0));
+        Normals.emplace_back(0,0,0);
     }
 
     // sample inner points of all free edges
@@ -3436,7 +3437,7 @@ void TopoShape::getPoints(std::vector<Base::Vector3d> &Points,
             for (int i=1; i<=nbPoints; i++) {
                 gp_Pnt p = curve.Value (discretizer.Parameter(i));
                 Points.push_back(Base::convertTo<Base::Vector3d>(p));
-                Normals.push_back(Base::Vector3d(0,0,0));
+                Normals.emplace_back(0,0,0);
             }
         }
     }
@@ -3510,7 +3511,7 @@ void TopoShape::getPoints(std::vector<Base::Vector3d> &Points,
                         Normals.push_back(Base::convertTo<Base::Vector3d>(normal));
                     }
                     else {
-                        Normals.push_back(Base::Vector3d(0,0,0));
+                        Normals.emplace_back(0,0,0);
                     }
                 }
             }

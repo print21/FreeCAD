@@ -498,7 +498,7 @@ void MeshAlgorithm::GetFacetBorders (const std::vector<unsigned long> &raulInd,
         // thus doesn't invalidate the iterator itself, only the referenced object
         if ((pEI == aclEdges.end()) || aclEdges.empty() || (ulLast == ulFirst)) {
             // no further edge found or closed polyline, respectively
-            rclBorders.push_back(std::vector<unsigned long>(clBorder.begin(), clBorder.end()));
+            rclBorders.emplace_back(clBorder.begin(), clBorder.end());
             clBorder.clear();
 
             if (aclEdges.size() > 0) {
@@ -599,7 +599,7 @@ void MeshAlgorithm::SplitBoundaryLoops( std::list<std::vector<unsigned long> >& 
         it != aBorders.end(); ++it) {
         bool split=false;
         for (std::vector<unsigned long>::iterator jt = it->begin(); jt != it->end(); ++jt) {
-            // two (ore more) boundaries meet in one non-manifold point
+            // two (or more) boundaries meet in one non-manifold point
             if (openPointDegree[*jt] > 2) {
                 split = true;
                 break;
@@ -1455,7 +1455,7 @@ bool MeshAlgorithm::CutWithPlane (const Base::Vector3f &clBase, const Base::Vect
 
     // Facet schneiden und Schnittstrecke ablegen
     if (clF.IntersectWithPlane(clBase, clNormal, clE1, clE2) == true)
-      clTempPoly.push_back(std::pair<Base::Vector3f, Base::Vector3f>(clE1, clE2));
+      clTempPoly.emplace_back(clE1, clE2);
   }
 
   if(bConnectPolygons)
@@ -1574,7 +1574,7 @@ bool MeshAlgorithm::ConnectLines (std::list<std::pair<Base::Vector3f, Base::Vect
         }
         while (bFoundLine);
 
-        rclPolylines.push_back(std::vector<Base::Vector3f>(clPoly.begin(), clPoly.end()));
+        rclPolylines.emplace_back(clPoly.begin(), clPoly.end());
     }
 
     // remove all polylines with too few length

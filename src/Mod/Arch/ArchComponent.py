@@ -276,8 +276,9 @@ class Component(ArchIFC.IfcProduct):
         for parent in obj.InList:
             if Draft.getType(parent) in ["Floor","BuildingPart"]:
                 if obj in parent.Group:
-                    if parent.Height.Value:
-                        return parent.Height.Value
+                    if parent.HeightPropagate:
+                        if parent.Height.Value:
+                            return parent.Height.Value
         # not found? get one level higher
         for parent in obj.InList:
             if hasattr(parent,"Group"):
@@ -468,11 +469,11 @@ class Component(ArchIFC.IfcProduct):
         for o in obj.Additions:
 
             if not base:
-                if o.isDerivedFrom("Part::Feature"):
+                if hasattr(o,'Shape'):
                     base = o.Shape
             else:
                 if base.isNull():
-                    if o.isDerivedFrom("Part::Feature"):
+                    if hasattr(o,'Shape'):
                         base = o.Shape
                 else:
                     # special case, both walls with coinciding endpoints
@@ -484,7 +485,7 @@ class Component(ArchIFC.IfcProduct):
                             add.Placement = add.Placement.multiply(placement)
                         base = base.fuse(add)
 
-                    elif o.isDerivedFrom("Part::Feature"):
+                    elif hasattr(o,'Shape'):
                         if o.Shape:
                             if not o.Shape.isNull():
                                 if o.Shape.Solids:
@@ -536,7 +537,7 @@ class Component(ArchIFC.IfcProduct):
                             else:
                                 base = base.cut(f)
 
-                elif o.isDerivedFrom("Part::Feature"):
+                elif hasattr(o,'Shape'):
                     if o.Shape:
                         if not o.Shape.isNull():
                             if o.Shape.Solids and base.Solids:
@@ -563,7 +564,7 @@ class Component(ArchIFC.IfcProduct):
                     if hasattr(obj.Axis.Proxy,"getPoints"):
                         points = obj.Axis.Proxy.getPoints(obj.Axis)
                 if not points:
-                    if obj.Axis.isDerivedFrom("Part::Feature"):
+                    if hasattr(obj.Axis,'Shape'):
                         points = [v.Point for v in obj.Axis.Shape.Vertexes]
         if points:
             shps = []

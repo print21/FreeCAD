@@ -123,7 +123,7 @@ public:
     //return PyObject as DrawViewDimensionPy
     virtual PyObject *getPyObject(void);
 
-    virtual std::string getFormatedValue();
+    virtual std::string getFormatedValue(int partial = 0);
     virtual double getDimValue();
     DrawViewPart* getViewPart() const;
     virtual QRectF getRect() const { return QRectF(0,0,1,1);}                   //pretend dimensions always fit!
@@ -135,24 +135,26 @@ public:
     int getRefType() const;                                                     //Vertex-Vertex, Edge, Edge-Edge
     void setAll3DMeasurement();
     void clear3DMeasurements(void);
-    bool checkReferences2D(void) const;
+    virtual bool checkReferences2D(void) const;
     pointPair getLinearPoints(void) {return m_linearPoints; }
     arcPoints getArcPoints(void) {return m_arcPoints; }
     anglePoints getAnglePoints(void) {return m_anglePoints; }
     bool leaderIntersectsArc(Base::Vector3d s, Base::Vector3d pointOnCircle);
     bool references(std::string geomName) const;
 
+    bool isMultiValueSchema(void) const;
+
 protected:
-    void onChanged(const App::Property* prop);
+    virtual void onChanged(const App::Property* prop);
     virtual void onDocumentRestored();
     bool showUnits() const;
     bool useDecimals() const;
     std::string getPrefix() const;
     std::string getDefaultFormatSpec() const;
-    pointPair getPointsOneEdge();
-    pointPair getPointsTwoEdges();
-    pointPair getPointsTwoVerts();
-    pointPair getPointsEdgeVert();
+    virtual pointPair getPointsOneEdge();
+    virtual pointPair getPointsTwoEdges();
+    virtual pointPair getPointsTwoVerts();
+    virtual pointPair getPointsEdgeVert();
 
 protected:
     Measure::Measurement *measurement;
@@ -166,7 +168,7 @@ protected:
 private:
     static const char* TypeEnums[];
     static const char* MeasureTypeEnums[];
-    void dumpRefs2D(char* text) const;
+    void dumpRefs2D(const char* text) const;
     //Dimension "geometry"
     pointPair   m_linearPoints;
     arcPoints   m_arcPoints;

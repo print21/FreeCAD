@@ -2250,7 +2250,7 @@ bool ViewProviderLink::getElementPicked(const SoPickedPoint *pp, std::string &su
     bool ret = linkView->linkGetElementPicked(pp,subname);
     if(!ret)
         return ret;
-    if(isGroup(ext)) {
+    if(isGroup(ext,true)) {
         const char *sub = 0;
         int idx = App::LinkBaseExtension::getArrayIndex(subname.c_str(),&sub);
         if(idx>=0 ) {
@@ -2408,6 +2408,7 @@ bool ViewProviderLink::initDraggingPlacement() {
     dragCtx.reset(new DraggerContext);
 
     dragCtx->preTransform = doc->getEditingTransform();
+    doc->setEditingTransform(dragCtx->preTransform);
 
     const auto &pla = ext->getPlacementProperty()?
         ext->getPlacementValue():ext->getLinkPlacementValue();
@@ -2425,7 +2426,7 @@ bool ViewProviderLink::initDraggingPlacement() {
     dragCtx->bbox.ScaleZ(scale.z);
     auto offset = dragCtx->bbox.GetCenter();
 
-    // This determins the initial placement of the dragger. We place it at the
+    // This determines the initial placement of the dragger. We place it at the
     // center of our bounding box.
     dragCtx->initialPlacement = pla * Base::Placement(offset, Base::Rotation());
 

@@ -743,8 +743,8 @@ void QGVPage::refreshViews(void)
     QList<QGraphicsItem*> qgiv;
     //find only QGIV's 
     for (auto q: list) {
-        QString tileFamily = QString::fromUtf8("QGIV");
-        if (tileFamily == q->data(0).toString()) {
+        QString viewFamily = QString::fromUtf8("QGIV");
+        if (viewFamily == q->data(0).toString()) {
             qgiv.push_back(q);
         }
     }
@@ -756,19 +756,14 @@ void QGVPage::refreshViews(void)
     }
 }
 
-void QGVPage::toggleHatch(bool enable)
+void QGVPage::setExporting(bool enable)
 {
+//    Base::Console().Message("QGVP::setExporting(%d)\n", enable);
     QList<QGraphicsItem*> sceneItems = scene()->items();
     for (auto& qgi:sceneItems) {
         QGIViewPart* qgiPart = dynamic_cast<QGIViewPart *>(qgi);
         if(qgiPart) {
-            QList<QGraphicsItem*> partChildren = qgiPart->childItems();
-            int faceItemType = QGraphicsItem::UserType + 104;
-            for (auto& c:partChildren) {
-                if (c->type() == faceItemType) {
-                    static_cast<QGIFace*>(c)->toggleSvg(enable);
-                }
-            }
+            qgiPart->setExporting(enable);
         }
     }
 }
@@ -781,9 +776,9 @@ void QGVPage::saveSvg(QString filename)
 
     const QString docName( QString::fromUtf8(page->getDocument()->getName()) );
     const QString pageName( QString::fromUtf8(page->getNameInDocument()) );
-    QString svgDescription = tr("Drawing page:") + QString::fromUtf8(" ") +
+    QString svgDescription = QString::fromUtf8("Drawing page: ") +
                              pageName +
-                             tr(" exported from FreeCAD document:") + QString::fromUtf8(" ") +
+                             QString::fromUtf8(" exported from FreeCAD document: ") +
                              docName;
 
     QSvgGenerator svgGen;
@@ -802,7 +797,7 @@ void QGVPage::saveSvg(QString filename)
     // the width and height attributes of the <svg> element."  >> but Inkscape won't read it without size info??
     svgGen.setViewBox(QRect(0, 0, pixelWidth, pixelHeight));
 
-    svgGen.setTitle(QObject::tr("FreeCAD SVG Export"));
+    svgGen.setTitle(QString::fromUtf8("FreeCAD SVG Export"));
     svgGen.setDescription(svgDescription);
 
     Gui::Selection().clearSelection();
@@ -810,7 +805,7 @@ void QGVPage::saveSvg(QString filename)
     bool saveState = m_vpPage->getFrameState();
     m_vpPage->setFrameState(false);
     m_vpPage->setTemplateMarkers(false);
-    toggleHatch(false);
+    setExporting(true);
 
     // Here we temporarily hide the page template, because Qt would otherwise convert the SVG template
     // texts into series of paths, making the later document edits practically unfeasible.
@@ -839,7 +834,7 @@ void QGVPage::saveSvg(QString filename)
 
     m_vpPage->setFrameState(saveState);
     m_vpPage->setTemplateMarkers(saveState);
-    toggleHatch(true);
+    setExporting(false);
     if (templateVisible) {
         svgTemplate->show();
     }

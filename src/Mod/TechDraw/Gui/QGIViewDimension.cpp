@@ -94,8 +94,12 @@ QGIDatumLabel::QGIDatumLabel()
 
     m_dimText = new QGCustomText();
     m_dimText->setParentItem(this);
-    m_tolText = new QGCustomText();
-    m_tolText->setParentItem(this);
+    m_tolTextOver = new QGCustomText();
+    m_tolTextOver->setParentItem(this);
+    m_tolTextUnder = new QGCustomText();
+    m_tolTextUnder->setParentItem(this);
+    m_unitText = new QGCustomText();
+    m_unitText->setParentItem(this);
 
     m_ctrl = false;
     hasHover = false;
@@ -208,13 +212,44 @@ void QGIDatumLabel::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
 
 void QGIDatumLabel::setPosFromCenter(const double &xCenter, const double &yCenter)
 {
+    QGIViewDimension* qgivd = dynamic_cast<QGIViewDimension*>(parentItem());
+    if( qgivd == nullptr ) {
+        return;                  //tarfu
+    }
+    const auto dim( dynamic_cast<TechDraw::DrawViewDimension *>(qgivd->getViewObject()) );
+    if( dim == nullptr ) {
+        return;
+    }
+
     //set label's Qt position(top,left) given boundingRect center point
     setPos(xCenter - m_dimText->boundingRect().width() / 2., yCenter - m_dimText->boundingRect().height() / 2.);
+
     //set tolerance position
     QRectF labelBox = m_dimText->boundingRect();
     double right = labelBox.right();
     double top   = labelBox.top();
-    m_tolText->setPos(right,top);
+    double bottom = labelBox.bottom();
+    double middle = (top + bottom) / 2.0;
+
+    QRectF overBox = m_tolTextOver->boundingRect();
+    double overWidth  = overBox.width();
+    QRectF underBox = m_tolTextUnder->boundingRect();
+    double underWidth = underBox.width();
+    double width = underWidth;
+    if (overWidth > underWidth) {
+        width = overWidth;
+    }
+    double tolRight = right + width;
+
+    m_tolTextOver->justifyRightAt(tolRight, middle, false);
+    m_tolTextUnder->justifyRightAt(tolRight, middle + underBox.height(), false);
+
+    //set unit position
+    if (dim->hasTolerance()) {
+        m_unitText->setPos(tolRight,top);
+    } else {
+        m_unitText->setPos(right, top);
+    }
 }
 
 void QGIDatumLabel::setLabelCenter()
@@ -227,11 +262,13 @@ void QGIDatumLabel::setLabelCenter()
 void QGIDatumLabel::setFont(QFont f)
 {
     m_dimText->setFont(f);
+    m_unitText->setFont(f);
     QFont tFont(f);
     double fontSize = f.pixelSize();
     double tolAdj = getTolAdjust();
     tFont.setPixelSize((int) (fontSize * tolAdj));
-    m_tolText->setFont(tFont);
+    m_tolTextOver->setFont(tFont);
+    m_tolTextUnder->setFont(tFont);
 }
 
 void QGIDatumLabel::setDimString(QString t)
@@ -258,22 +295,59 @@ void QGIDatumLabel::setTolString()
     if( dim == nullptr ) {
         return;
     } else if (!dim->hasTolerance()) {
+        m_tolTextOver->hide();
+        m_tolTextUnder->hide();        // don't show if both zero
         return;
     }
-    
+    m_tolTextOver->show();
+    m_tolTextUnder->show();
+
     double overTol = dim->OverTolerance.getValue();
     double underTol = dim->UnderTolerance.getValue();
 
     int precision = getPrecision();
-    QString overFormat = QString::number(overTol,'f', precision);
-    QString underFormat = QString::number(underTol,'f',precision);
+    QString qsPrecision = QString::number(precision);
+    QString qsFormatOver = QString::fromUtf8("%+.") +            //show sign
+                           qsPrecision +
+                           QString::fromUtf8("g");               //trim trailing zeroes
+    if (DrawUtil::fpCompare(overTol, 0.0, pow(10.0, -precision))) {
+        qsFormatOver = QString::fromUtf8("%.") +            //no sign
+                           qsPrecision +
+                           QString::fromUtf8("g");
+    }
+    
+    QString qsFormatUnder = QString::fromUtf8("%+.") +            //show sign
+                              qsPrecision +
+                              QString::fromUtf8("g");               //trim trailing zeroes
+    if (DrawUtil::fpCompare(underTol, 0.0, pow(10.0, -precision))) {
+        qsFormatUnder = QString::fromUtf8("%.") +            //no sign
+                           qsPrecision +
+                           QString::fromUtf8("g");               //trim trailing zeroes
+    }
 
-    QString html = QString::fromUtf8("<div>%1 <br/>%2 </div>");
-    html = html.arg(overFormat).arg(underFormat);
-    m_tolText->setHtml(html);
+    QString overFormat;
+    QString underFormat;
+    #if QT_VERSION >= 0x050000
+        overFormat = QString::asprintf(qsFormatOver.toStdString().c_str(), overTol);
+        underFormat = QString::asprintf(qsFormatUnder.toStdString().c_str(), underTol);
+    #else
+        QString qs2;
+        overFormat = qs2.sprintf(qsFormatOver.toStdString().c_str(), overTol);
+        underFormat = qs2.sprintf(qsFormatUnder.toStdString().c_str(), underTol);
+    #endif
+
+    m_tolTextOver->setHtml(overFormat);
+    m_tolTextUnder->setHtml(underFormat);
 
     return;
 } 
+
+void QGIDatumLabel::setUnitString(QString t)
+{
+    prepareGeometryChange();
+    m_unitText->setPlainText(t);
+} 
+
 
 int QGIDatumLabel::getPrecision(void)
 {
@@ -303,26 +377,34 @@ double QGIDatumLabel::getTolAdjust(void)
 void QGIDatumLabel::setPrettySel(void)
 {
     m_dimText->setPrettySel();
-    m_tolText->setPrettySel();
+    m_tolTextOver->setPrettySel();
+    m_tolTextUnder->setPrettySel();
+    m_unitText->setPrettySel();
 }
 
 void QGIDatumLabel::setPrettyPre(void)
 {
     m_dimText->setPrettyPre();
-    m_tolText->setPrettyPre();
+    m_tolTextOver->setPrettyPre();
+    m_tolTextUnder->setPrettyPre();
+    m_unitText->setPrettyPre();
 }
 
 void QGIDatumLabel::setPrettyNormal(void)
 {
     m_dimText->setPrettyNormal();
-    m_tolText->setPrettyNormal();
+    m_tolTextOver->setPrettyNormal();
+    m_tolTextUnder->setPrettyNormal();
+    m_unitText->setPrettyNormal();
 }
 
 void QGIDatumLabel::setColor(QColor c)
 {
     m_colNormal = c;
     m_dimText->setColor(m_colNormal);
-    m_tolText->setColor(m_colNormal);
+    m_tolTextOver->setColor(m_colNormal);
+    m_tolTextUnder->setColor(m_colNormal);
+    m_unitText->setColor(m_colNormal);
 }
 
 //**************************************************************
@@ -506,7 +588,20 @@ void QGIViewDimension::updateDim()
         return;
     }
  
-    QString labelText = QString::fromUtf8(dim->getFormatedValue().c_str());
+//    QString labelText = QString::fromUtf8(dim->getFormatedValue().c_str());
+    //want this split into value and unit
+    QString labelText;
+    QString unitText;
+    if (dim->Arbitrary.getValue()) {
+        labelText = QString::fromUtf8(dim->getFormatedValue(1).c_str()); //just the number pref/spec/suf
+    } else {
+        if (dim->isMultiValueSchema()) {
+            labelText = QString::fromUtf8(dim->getFormatedValue(0).c_str()); //don't format multis
+        } else {
+            labelText = QString::fromUtf8(dim->getFormatedValue(1).c_str()); //just the number pref/spec/suf
+            unitText  = QString::fromUtf8(dim->getFormatedValue(2).c_str()); //just the unit
+        }
+    }
     
     QFont font = datumLabel->getFont();
     font.setFamily(QString::fromUtf8(vp->Font.getValue()));
@@ -516,18 +611,28 @@ void QGIViewDimension::updateDim()
     prepareGeometryChange();
     datumLabel->setDimString(labelText);
     datumLabel->setTolString();
+    datumLabel->setUnitString(unitText);
     datumLabel->setPosFromCenter(datumLabel->X(),datumLabel->Y());
 
     datumLabel->setFramed(dim->TheoreticalExact.getValue());
     datumLabel->setLineWidth(m_lineWidth);
 }
+
 //this is for formatting and finding centers, not display
 QString QGIViewDimension::getLabelText(void)
 {
     QString result;
     QString first = datumLabel->getDimText()->toPlainText();
-    QString second = datumLabel->getTolText()->toPlainText();
-    result = first + second;
+//    QString second = datumLabel->getTolText()->toPlainText();
+    QString second = datumLabel->getTolTextOver()->toPlainText();
+    QString third = datumLabel->getTolTextUnder()->toPlainText();
+    if (second.length() > third.length()) {
+        result = first + second;
+    } else {
+        result = first + third;
+    }
+
+//    result = first + second;
     return result;
 }
 
@@ -1718,7 +1823,7 @@ void QGIViewDimension::drawDiameter(TechDraw::DrawViewDimension *dimension, View
         else if (standardStyle == ViewProviderDimension::STD_STYLE_ASME_INLINED) {
             // Text must remain horizontal, but it may split the leader line
             double lineAngle = (labelCenter - curveCenter).Angle();
-            Base::Vector2d lineDirection(Base::Vector2d::FromPolar(1.0, lineAngle));
+          //Base::Vector2d lineDirection(Base::Vector2d::FromPolar(1.0, lineAngle));
 
             drawDimensionLine(diameterPath, curveCenter + Base::Vector2d::FromPolar(curveRadius, lineAngle), lineAngle,
                               -curveRadius*2.0, (labelCenter - curveCenter).Length() - curveRadius,

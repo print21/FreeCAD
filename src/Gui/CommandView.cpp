@@ -2504,7 +2504,7 @@ static std::vector<std::string> getBoxSelection(
     const auto &subs = obj->getSubObjects(App::DocumentObject::GS_SELECT);
     if(subs.empty()) {
         if(!selectElement) {
-            if(mode==INTERSECT || bbox.Contains(bbox.GetCenter()))
+            if(mode==INTERSECT || polygon.Contains(bbox.GetCenter()))
                 ret.emplace_back("");
             return ret;
         }
@@ -3391,7 +3391,7 @@ public:
 //======================================================================
 // Std_SelBoundingBox
 //===========================================================================
-DEF_STD_CMD_AC(StdCmdSelBoundingBox);
+DEF_STD_CMD_AC(StdCmdSelBoundingBox)
 
 StdCmdSelBoundingBox::StdCmdSelBoundingBox()
   :Command("Std_SelBoundingBox")

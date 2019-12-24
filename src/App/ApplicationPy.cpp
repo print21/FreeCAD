@@ -103,7 +103,7 @@ PyMethodDef Application::Methods[] = {
      "* If no module is given it will be determined by the file extension.\n"
      "* If more than one module can load a file the first one one will be taken.\n"
      "* If no module exists to load the file an exception will be raised."},
-    {"open",   (PyCFunction) Application::sOpenDocument, METH_VARARGS,
+    {"open",   (PyCFunction) Application::sOpenDocument, METH_VARARGS|METH_KEYWORDS,
      "See openDocument(string)"},
     {"openDocument",   (PyCFunction) Application::sOpenDocument, METH_VARARGS|METH_KEYWORDS,
      "openDocument(filepath,hidden=False) -> object\n"
@@ -119,7 +119,7 @@ PyMethodDef Application::Methods[] = {
      "newDocument(name, label=None, hidden=False) -> object\n"
      "Create a new document with a given name.\n\n"
      "name: unique document name which is checked automatically.\n"
-     "label: optional user changable label for the document.\n"
+     "label: optional user changeable label for the document.\n"
      "hidden: whether to hide document 3D view."},
     {"closeDocument",  (PyCFunction) Application::sCloseDocument, METH_VARARGS,
      "closeDocument(string) -> None\n\n"

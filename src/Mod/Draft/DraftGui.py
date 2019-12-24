@@ -38,14 +38,18 @@ __url__ = ["http://www.freecadweb.org"]
 Report to Draft.py for info
 """
 
+import os
 import six
+import sys
+import traceback
+import math
+import platform
+import FreeCAD
+import FreeCADGui
+import Draft
+import DraftVecUtils
+from PySide import QtCore, QtGui, QtSvg
 
-import FreeCAD, FreeCADGui, os, Draft, sys, traceback, DraftVecUtils, math
-
-try:
-    from PySide import QtCore, QtGui, QtSvg
-except ImportError:
-    FreeCAD.Console.PrintMessage("Error: Python-pyside package must be installed on your system to use the Draft module.")
 
 try:
     _encoding = QtGui.QApplication.UnicodeUTF8 if six.PY2 else None
@@ -249,7 +253,7 @@ def displayExternal(internValue,decimals=None,dim='Length',showUnit=True,unit=No
     if dim == 'Length':
         q = FreeCAD.Units.Quantity(internValue,FreeCAD.Units.Length)
         if not unit:
-            if (decimals == None) and showUnit:
+            if (decimals is None) and showUnit:
                 return q.UserString
             conversion = q.getUserPreferred()[1]
             uom = q.getUserPreferred()[2]
@@ -261,7 +265,7 @@ def displayExternal(internValue,decimals=None,dim='Length',showUnit=True,unit=No
         return FreeCAD.Units.Quantity(internValue,FreeCAD.Units.Angle).UserString
     else:
         conversion = 1.0
-        if decimals == None:
+        if decimals is None:
             decimals = 2
         uom = "??"
     if not showUnit:
@@ -915,16 +919,16 @@ class DraftToolBar:
         elif self.angleLock.isVisible() and self.angleLock.isChecked():
             self.lengthValue.setFocus()
             self.lengthValue.selectAll()
-        elif f==None or f=="x":
+        elif (f is None) or (f == "x"):
             self.xValue.setFocus()
             self.xValue.selectAll()
-        elif f=="y":
+        elif f == "y":
             self.yValue.setFocus()
             self.yValue.selectAll()
-        elif f=="z":
+        elif f == "z":
             self.zValue.setFocus()
             self.zValue.selectAll()
-        elif f=="radius":
+        elif f == "radius":
             self.radiusValue.setFocus()
             self.radiusValue.selectAll()
 
@@ -1973,7 +1977,7 @@ class DraftToolBar:
         FreeCADGui.runCommand("Draft_AutoGroup")
 
     def setAutoGroup(self,value=None):
-        if value == None:
+        if value is None:
             self.autogroup = None
             self.autoGroupButton.setText("None")
             self.autoGroupButton.setIcon(QtGui.QIcon.fromTheme('Draft_AutoGroup_off',
@@ -2459,6 +2463,7 @@ class ShapeStringTaskPanel:
 
         self.stringText = translate("draft","Default")
         self.task.leString.setText(self.stringText)
+        self.platWinDialog(True)
         self.task.fcFontFile.setFileName(Draft.getParam("FontFile",""))
         self.fileSpec = Draft.getParam("FontFile","")
         self.point = FreeCAD.Vector(0.0,0.0,0.0)
@@ -2530,12 +2535,21 @@ class ShapeStringTaskPanel:
         except Exception as e:
             FreeCAD.Console.PrintError("Draft_ShapeString: error delaying commit\n")
 
+    def platWinDialog(self, OnOff):
+        tDialog = FreeCAD.ParamGet("User parameter:BaseApp/Preferences/Dialog")
+        if platform.system() == 'Windows':
+            if OnOff:
+                return tDialog.SetBool("DontUseNativeDialog", True)
+            else:
+                return tDialog.SetBool("DontUseNativeDialog", False)
+
     def accept(self):
         self.createObject();
         if self.call: self.view.removeEventCallback("SoEvent",self.call)
         FreeCADGui.ActiveDocument.resetEdit()
         FreeCADGui.Snapper.off()
         self.sourceCmd.creator.finish(self.sourceCmd)
+        self.platWinDialog(False)
         return True
 
     def reject(self):
@@ -2543,6 +2557,7 @@ class ShapeStringTaskPanel:
         FreeCADGui.ActiveDocument.resetEdit()
         FreeCADGui.Snapper.off()
         self.sourceCmd.creator.finish(self.sourceCmd)
+        self.platWinDialog(False)
         return True
 
 if not hasattr(FreeCADGui,"draftToolBar"):

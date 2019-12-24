@@ -39,7 +39,7 @@ namespace Gui {
 
 class GuiExport TextDocumentEditorView : public MDIView {
     Q_OBJECT
-    TYPESYSTEM_HEADER();
+    TYPESYSTEM_HEADER_WITH_OVERRIDE();
 
 public:
     TextDocumentEditorView(
@@ -55,16 +55,21 @@ public:
 
     QPlainTextEdit* getEditor() const { return editor; }
     App::TextDocument* getTextObject() const { return textDocument; }
+
 private:
     void setupEditor();
     void setupConnection();
     void saveToObject();
     void sourceChanged();
+    void labelChanged();
     void refresh();
     bool isEditorModified() const;
+
+private:
     QPlainTextEdit *const editor;
     App::TextDocument *const textDocument;
     boost::signals2::connection textConnection;
+    boost::signals2::connection labelConnection;
     bool sourceModified = false;
 };
 

@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (c) 2013 Jürgen Riegel (FreeCAD@juergen-riegel.net)         *
+ *   Copyright (c) 2013 Jürgen Riegel <FreeCAD@juergen-riegel.net>         *
  *                                                                         *
  *   This file is part of the FreeCAD CAx development system.              *
  *                                                                         *
@@ -45,7 +45,7 @@ namespace Fem {
  *  compatibility handling via handleChangedPropertyName.
  *
  *  This implies that it is not checked which objects are put into the
- *  Analsis object. Every document object of FreeCAD can be part of a
+ *  Analysis object. Every document object of FreeCAD can be part of a
  *  Analysis.
  */
 class AppFemExport FemAnalysis : public App::DocumentObjectGroup {

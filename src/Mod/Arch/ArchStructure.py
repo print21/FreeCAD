@@ -271,10 +271,10 @@ class _CommandStructure:
         "this function is called by the snapper when it has a 3D point"
 
         self.bmode = self.modeb.isChecked()
-        if point == None:
+        if point is None:
             self.tracker.finalize()
             return
-        if self.bmode and (self.bpoint == None):
+        if self.bmode and (self.bpoint is None):
             self.bpoint = point
             FreeCADGui.Snapper.getPoint(last=point,callback=self.getPoint,movecallback=self.update,extradlg=[self.taskbox(),self.precast.form,self.dents.form],title=translate("Arch","Next point")+":",mode="line")
             return
@@ -686,7 +686,7 @@ class _Structure(ArchComponent.Component):
             else:
                 base = Part.makeCompound(base)
         if obj.Base:
-            if obj.Base.isDerivedFrom("Part::Feature"):
+            if hasattr(obj.Base,'Shape'):
                 if obj.Base.Shape.isNull():
                     return
                 if not obj.Base.Shape.isValid():
@@ -734,7 +734,7 @@ class _Structure(ArchComponent.Component):
         base = None
         placement = None
         if obj.Base:
-            if obj.Base.isDerivedFrom("Part::Feature"):
+            if hasattr(obj.Base,'Shape'):
                 if obj.Base.Shape:
                     if obj.Base.Shape.Solids:
                         return None
@@ -1215,7 +1215,7 @@ class _StructuralSystem(ArchComponent.Component): # OBSOLETE - All Arch objects 
         # creating base shape
         pl = obj.Placement
         if obj.Base:
-            if obj.Base.isDerivedFrom("Part::Feature"):
+            if hasattr(obj.Base,'Shape'):
                 if obj.Base.Shape.isNull():
                     return
                 if not obj.Base.Shape.Solids:

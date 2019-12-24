@@ -103,12 +103,17 @@ public:
     static Unit Area;
     static Unit Volume;
     static Unit TimeSpan;
+    static Unit Frequency;
     static Unit Velocity;
     static Unit Acceleration;
     static Unit Temperature;
 
     static Unit ElectricCurrent;
     static Unit ElectricPotential;
+    static Unit ElectricCharge;
+    static Unit MagneticFluxDensity;
+    static Unit ElectricalCapacitance;
+    static Unit ElectricalInductance;
     static Unit AmountOfSubstance;
     static Unit LuminousIntensity;
 
